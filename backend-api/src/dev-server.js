@@ -7,26 +7,35 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: './config.env' });
 
-// Import routes
-const authRoutes = require('./modules/auth/routes');
-const attendanceRoutes = require('./modules/attendance/routes');
-const leaveRoutes = require('./modules/leave/routes');
-const workReportRoutes = require('./modules/work-report/routes');
-const excelRoutes = require('./modules/excel-processing/routes');
-const notificationRoutes = require('./modules/notification/routes');
-const geofenceRoutes = require('./modules/geofence/routes');
-const securityRoutes = require('./modules/security-monitoring/routes');
+// Mock database and Redis connections for development
+const mockConnectDB = async () => {
+  console.log('✅ Mock database connection (development mode)');
+  return true;
+};
+
+const mockConnectRedis = async () => {
+  console.log('✅ Mock Redis connection (development mode)');
+  return true;
+};
+
+// Import mock routes for development
+const {
+  authRoutes,
+  attendanceRoutes,
+  leaveRoutes,
+  workReportRoutes,
+  excelRoutes,
+  geofenceRoutes,
+  securityRoutes,
+  notificationRoutes
+} = require('./mock-routes');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
 const { authenticateToken } = require('./middleware/authMiddleware');
 const { logRequest } = require('./middleware/loggingMiddleware');
-
-// Import database connection
-const { connectDB } = require('./config/database');
-const { connectRedis } = require('./config/redis');
 
 // Import WebSocket handlers
 const { setupWebSocket } = require('./modules/notification/websocket');
@@ -42,9 +51,9 @@ const io = new Server(httpServer, {
   }
 });
 
-// Global rate limiter (5 requests per minute for auth endpoints)
+// Global rate limiter
 const authLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: 5,
   message: 'Too many login attempts, please try again after a minute',
   standardHeaders: true,
@@ -59,7 +68,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", process.env.FACE_AI_SERVICE_URL || 'http://localhost:5000']
+      connectSrc: ["'self'", process.env.FACE_AI_SERVICE_URL || 'http://localhost:8000']
     }
   }
 }));
@@ -96,11 +105,47 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
+    mode: 'development',
     services: {
-      database: 'connected',
-      redis: 'connected',
-      face_ai_service: 'checking'
+      database: 'mocked',
+      redis: 'mocked',
+      face_ai_service: 'not connected'
     }
+  });
+});
+
+// Development info endpoint
+app.get('/dev-info', (req, res) => {
+  res.status(200).json({
+    message: 'Development server running without database',
+    endpoints: [
+      'GET /health - Health check',
+      'GET /dev-info - This info',
+      'POST /api/auth/face-login - Mock face login',
+      'GET /api/attendance/today - Today\'s attendance',
+      'POST /api/attendance/check-in - Check in',
+      'GET /api/leave - Leave requests',
+      'GET /api/work-report - Work reports',
+      'All other endpoints are available but return mock data'
+    ]
+  });
+});
+
+// Test endpoint to verify routes are mounted
+app.get('/api/test', (req, res) => {
+  res.json({
+    message: 'API routes are working!',
+    timestamp: new Date().toISOString(),
+    availableRoutes: [
+      '/api/auth/*',
+      '/api/attendance/*',
+      '/api/leave/*',
+      '/api/work-report/*',
+      '/api/excel/*',
+      '/api/geofence/*',
+      '/api/security/*',
+      '/api/notification/*'
+    ]
   });
 });
 
@@ -112,20 +157,19 @@ const PORT = process.env.PORT || 3001;
 // Initialize connections and start server
 async function startServer() {
   try {
-    // Connect to database
-    await connectDB();
-    console.log('✅ Database connected successfully');
-
-    // Connect to Redis
-    await connectRedis();
-    console.log('✅ Redis connected successfully');
+    // Mock connections
+    await mockConnectDB();
+    await mockConnectRedis();
 
     // Start server
     httpServer.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🚀 Development server running on port ${PORT}`);
       console.log(`📡 WebSocket server ready`);
       console.log(`🔒 Security middleware active`);
       console.log(`🌍 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log(`🧪 Development mode: Database and Redis are mocked`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`ℹ️  Dev info: http://localhost:${PORT}/dev-info`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

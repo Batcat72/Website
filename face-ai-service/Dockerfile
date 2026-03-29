@@ -29,33 +29,8 @@ ENV PIP_NO_CACHE_DIR=1
 RUN pip config set global.index-url https://pypi.org/simple \
     && pip config set global.trusted-host pypi.org
 
-# 🔥 Fix numpy FIRST (critical compatibility fix)
-RUN pip install --no-cache-dir numpy==1.26.4
-
-# 🔥 Install required missing dependencies (manual since --no-deps is used)
-RUN pip install --no-cache-dir \
-    click itsdangerous blinker h11 \
-    joblib threadpoolctl imageio lazy_loader tifffile \
-    python-dateutil pytz tzdata \
-    attrs jax jaxlib sounddevice opencv-contrib-python \
-    contourpy cycler fonttools kiwisolver pyparsing \
-    exceptiongroup iniconfig pluggy \
-    gdown fire gunicorn mtcnn tqdm dm-tree tomli importlib-resources
-
 # 🔥 Now install your requirements safely
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt --no-deps
-# Install dependencies (CPU optimized for torch)
-RUN pip install --no-cache-dir \
-    torch==2.2.2+cpu torchvision==0.17.2+cpu torchaudio==2.2.2 \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# 🔥 FIX: Force OpenCV install (ensures cv2 is available)
-RUN pip install --no-cache-dir opencv-python-headless==4.9.0.80
-RUN pip install tensorflow-cpu==2.16.1
-
-# 🔥 FIX: Install remaining dependencies (this was missing before)
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt --no-deps
-RUN pip install --no-cache-dir python-socketio==5.11.2 python-engineio==4.9.0
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Copy application code
 COPY . .
