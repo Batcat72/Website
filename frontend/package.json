@@ -1,7 +1,8 @@
 {
   "name": "employee-attendance-frontend",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
+  "homepage": "https://batcat72.github.io/Website",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
